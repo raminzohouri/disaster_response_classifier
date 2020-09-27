@@ -80,7 +80,7 @@ Fill free to try them out and add your changes and ideas.
             * The model will be saved as compressed format `*.lzma`
         *  `python3 webapp/run.py`
             * The webapp runs with default values for model and database stored in `modesl` and `data` directories.
-            * It is possible to supply alternative `--db_file` and `model_file` as arguments.  
+            * It is possible to supply alternative `db_file` and `model_file` as arguments.  
     * all the input paths can be modified accordingly.
     
 More Information
