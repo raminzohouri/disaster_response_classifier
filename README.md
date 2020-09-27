@@ -16,9 +16,6 @@ Review Report
 ####TODO:  
 - [ ] add link to webapp
 - [ ] write some instruction for using webapp 
-- [ ] Add argparser to webapp
-- [ ] Describe how to operate web app
-- [ ] etc
  
 Content
 -------
@@ -78,8 +75,12 @@ Fill free to try them out and add your changes and ideas.
         * `git clone git@github.com:raminzohouri/disaster_response_classifier.git`
     *  To build the model and run the webapp from project root execute following command:
         * `python3 process python3 disaster_response_classifier/process_data.py  --msg_file ../data/disaster-response-messages.csv --cat_file ../data/disaster-response-categories.csv --db_file ../data/`
+            * The database will contain one table, `DisasterResponseData`.
         * `python3 process python3 disaster_response_classifier/train_classifier.py --db_file data/DisasterResponseDataBase.db --model_file models/`
+            * The model will be saved as compressed format `*.lzma`
         *  `python3 webapp/run.py`
+            * The webapp runs with default values for model and database stored in `modesl` and `data` directories.
+            * It is possible to supply alternative `--db_file` and `model_file` as arguments.  
     * all the input paths can be modified accordingly.
     
 More Information
