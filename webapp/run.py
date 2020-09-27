@@ -2,6 +2,7 @@ import json
 import plotly
 import pandas as pd
 import pathlib
+import argparse
 
 # from ..disaster_response_classifier import utils
 from nltk.stem import WordNetLemmatizer
@@ -14,9 +15,16 @@ import joblib
 from sqlalchemy import create_engine
 
 app = Flask(__name__)
+df = None
+model = None
 
 
 def tokenize(text):
+    """
+
+    :param text:
+    :return:
+    """
     tokens = word_tokenize(text)
     lemmatizer = WordNetLemmatizer()
 
@@ -29,6 +37,10 @@ def tokenize(text):
 
 
 def get_project_path():
+    """
+
+    :return:
+    """
     if len(__file__.split("/")) > 1:
         project_path = str(pathlib.Path(__file__).parent.parent.absolute())
     else:
@@ -36,18 +48,26 @@ def get_project_path():
     return project_path
 
 
-project_path = get_project_path()
-# load data
-engine = create_engine(
-    "".join(["sqlite:///", project_path, "/data/DisasterResponseDataBase.db"])
-)
-df = pd.read_sql_table("DisasterResponseData", engine)
+def load_dataframe(db_file):
+    """
 
-# load model
-with open(
-    "".join([str(project_path), "/models/dr_trained_model.lzma"]), "rb"
-) as pickle_file:
-    model = joblib.load(pickle_file)
+    :param db_file:
+    :return:
+    """
+    engine = create_engine("".join(["sqlite:///", db_file]))
+    df = pd.read_sql_table("DisasterResponseData", engine)
+    return df
+
+
+def load_model(model_file):
+    """
+
+    :param model_file:
+    :return:
+    """
+    with open(model_file, "rb") as pickle_file:
+        model = joblib.load(pickle_file)
+    return model
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -96,7 +116,45 @@ def go():
     )
 
 
+def generate_arg_parser():
+    """
+
+    :return:
+    """
+    project_path = get_project_path()
+    # load data
+    default_db_path = "".join([project_path, "/data/DisasterResponseDataBase.db"])
+    default_model_path = "".join([str(project_path), "/models/dr_trained_model.lzma"])
+
+    parser = argparse.ArgumentParser(
+        description="Load data from database, load model, and run the webapp."
+    )
+
+    parser.add_argument(
+        "--db_file",
+        action="store",
+        dest="db_file",
+        type=str,
+        default=default_db_path,
+        help="Path to disaster response database",
+    )
+
+    parser.add_argument(
+        "--model_file",
+        action="store",
+        dest="model_file",
+        type=str,
+        default=default_model_path,
+        help="path to store trained machine leaning model.",
+    )
+    return parser.parse_args(), parser
+
+
 def main():
+    args_params, parser = generate_arg_parser()
+    global df, model
+    df = load_dataframe(args_params.db_file)
+    model = load_model(args_params.model_file)
     app.run(host="0.0.0.0", port=3001, debug=True)
 
 
