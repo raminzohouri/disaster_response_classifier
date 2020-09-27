@@ -49,8 +49,6 @@ Add the following python packages are required. There are four groups of require
 ```python
 pip3 install --user pandas
 pip3 install --user numpy
-pip3 install --user argparse
-pip3 install --user json
 pip3 install --user sqlalchemy
 pip3 install --user nltk  
 ```
