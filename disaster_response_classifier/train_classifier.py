@@ -109,8 +109,12 @@ def save_model(model, model_filepath):
 
 
 def generate_arg_parser():
+    """
+
+    :return:
+    """
     parser = argparse.ArgumentParser(
-        description="Process row data and store in database."
+        description="Load data from database and train classifier and dump the trained model."
     )
 
     parser.add_argument(

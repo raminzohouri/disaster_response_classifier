@@ -75,6 +75,10 @@ def save_data(df, database_filepath):
 
 
 def generate_arg_parser():
+    """
+
+    :return:
+    """
     parser = argparse.ArgumentParser(
         description="Process row data and store in database."
     )
