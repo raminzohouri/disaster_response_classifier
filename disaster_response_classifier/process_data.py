@@ -47,7 +47,9 @@ def clean_data(df):
     # set each value to be the last character of the string
     # convert column from string to numeric
     df[df.columns[4 : df.shape[1]]] = (
-        df[df.columns[4 : df.shape[1]]].applymap(lambda x: x[-1]).astype(int)
+        df[df.columns[4 : df.shape[1]]]
+        .applymap(lambda x: x[-1] if x[-1] in ["0", "1"] else "1")
+        .astype(int)
     )
 
     # drop duplicates
