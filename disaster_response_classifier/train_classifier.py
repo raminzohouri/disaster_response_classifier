@@ -8,11 +8,16 @@ import numpy as np
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+
 import joblib
 
 nltk.download(["punkt", "wordnet", "averaged_perceptron_tagger"])
@@ -59,26 +64,75 @@ def build_model():
         [
             ("vect", CountVectorizer(tokenizer=tokenize)),
             ("tfidf", TfidfTransformer()),
-            ("clf", MultiOutputClassifier(KNeighborsClassifier())),
+            ("clf", MultiOutputClassifier(RandomForestClassifier())),
         ]
     )
     return pipeline
 
 
-def display_evaluation_results(y_test, y_pred):
+def build_optimized_model():
+    """
+
+    :return:
+    """
+    clf = MultiOutputClassifier(SVC())
+    tune_parameters = {
+        "estimator__gamma": [1e-1, 1e-2, 1e-3, 1e-4],
+        "estimator__C": [1, 10, 100, 1000],
+    }
+    clf_grid = GridSearchCV(estimator=clf, n_jobs=7, cv=5, param_grid=tune_parameters)
+    pipeline = Pipeline(
+        [
+            ("vect", CountVectorizer(tokenizer=tokenize)),
+            ("tfidf", TfidfTransformer()),
+            ("clf", clf_grid),
+        ]
+    )
+    return pipeline
+
+
+def display_evaluation_results(y_test, y_pred, label_names):
     """
 
     :param y_test:
     :param y_pred:
+    :param label_names
     :return:
     """
-    labels = np.unique(y_pred)
-    # confusion_mat = confusion_matrix(y_test, y_pred, labels=labels)
-    accuracy = (y_pred == y_test).mean()
-
-    print("Labels:", labels)
-    # print("Confusion Matrix:\n", confusion_mat)
-    print("Accuracy:", accuracy)
+    for i, l_name in enumerate(label_names):
+        labels = np.unique(y_pred)
+        target_names = ["".join(["not ", l_name]), l_name]
+        print(
+            classification_report(
+                y_pred=y_pred[:, i],
+                y_true=y_test.iloc[:, i].to_numpy(),
+                labels=labels,
+                target_names=target_names,
+            )
+        )
+        print("")
+    print(
+        "average accuracy {}".format(
+            sum(
+                [
+                    accuracy_score(y_test.iloc[:, i].to_numpy(), y_pred[:, i])
+                    for i in range(y_pred.shape[1])
+                ]
+            )
+            / y_pred.shape[1]
+        )
+    )
+    print(
+        "average f1_score {}".format(
+            sum(
+                [
+                    f1_score(y_test.iloc[:, i].to_numpy(), y_pred[:, i])
+                    for i in range(y_pred.shape[1])
+                ]
+            )
+            / y_pred.shape[1]
+        )
+    )
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
@@ -91,18 +145,19 @@ def evaluate_model(model, X_test, Y_test, category_names):
     :return:
     """
     y_pred = model.predict(X_test)
-    display_evaluation_results(Y_test, y_pred)
+    display_evaluation_results(Y_test, y_pred, category_names)
 
 
-def save_model(model, model_filepath):
+def save_model(model, model_filepath, model_name="dr_trained_model.lzma"):
     """
 
     :param model:
     :param model_filepath:
+    :param model_name:
     :return:
     """
     # save
-    m_f = "".join([model_filepath, "dr_trained_model.lzma"])
+    m_f = "".join([model_filepath, model_name])
     if os.path.exists(m_f):
         os.remove(m_f)
     joblib.dump(value=model, filename=m_f, compress=("lzma", 9))
@@ -146,6 +201,7 @@ def main():
 
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
 
+    # build/train/evaluate/save model
     print("Building model...")
     model = build_model()
 
@@ -156,7 +212,23 @@ def main():
     evaluate_model(model, X_test, Y_test, category_names)
 
     print("Saving model...\n    MODEL: {}".format(args_params.model_file))
-    save_model(model, args_params.model_file)
+    save_model(
+        model,
+        args_params.model_file,
+    )
+
+    # build/train/evaluate/save optimized model
+    print("Building optimized model...")
+    opt_model = build_optimized_model()
+
+    print("Training optimized model...")
+    opt_model.fit(X_train, Y_train)
+
+    print("Evaluating optimized model...")
+    evaluate_model(opt_model, X_test, Y_test, category_names)
+
+    print("Saving optimized model...\n    MODEL: {}".format(args_params.model_file))
+    save_model(opt_model, args_params.model_file, "dr_trained_opt_model.lzma")
 
     print("Trained model saved!")
 
