@@ -70,33 +70,92 @@ def load_model(model_file):
     return model
 
 
+def get_data_graph(df_counts, df_names, title, y_title, x_title):
+    """
+
+    :param df_counts:
+    :param df_names:
+    :param title:
+    :param y_title
+    :param x_title
+    :return:
+    """
+    graphs = [
+        {
+            "data": [Bar(x=df_names, y=df_counts)],
+            "layout": {
+                "title": title,
+                "yaxis": {"title": y_title},
+                "xaxis": {"title": x_title},
+            },
+        }
+    ]
+    # encode plotly graphs in JSON
+
+    return graphs
+
+
+def get_graphs():
+    """
+
+    :return:
+    """
+    # make genre graph
+    genre_counts = df.genre.value_counts()
+    genre_names = list(genre_counts.index)
+    genre_graph = get_data_graph(
+        genre_counts,
+        genre_names,
+        title="Distribution of Message Genres",
+        y_title="Count",
+        x_title="Genre",
+    )
+    # make adi related graph
+    aid_counts = (
+        df[df.message.str.lower().str.contains("help")]
+        .aid_related.value_counts()
+        .reset_index()
+        .aid_related
+    )
+    aid_names = ["Not Aid Related", "Aid Related"]
+    aid_graph = get_data_graph(
+        aid_counts,
+        aid_names,
+        title="Distribution of Aid Related Messages containing world 'help' ",
+        y_title="Count",
+        x_title="Aid Related Message",
+    )
+
+    medical_counts = (
+        df[df.message.str.lower().str.contains("doctor")]
+        .medical_help.value_counts()
+        .reset_index()
+        .medical_help
+    )
+    medical_names = ["Not Medical Help", "Medical Help"]
+    medical_graph = get_data_graph(
+        medical_counts,
+        medical_names,
+        title="Distribution of Medical Help Messages containing world 'doctor' ",
+        y_title="Count",
+        x_title="Medical Hel Message",
+    )
+
+    graphs = genre_graph + aid_graph + medical_graph
+    ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
+    json_graph = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
+    return ids, json_graph
+
+
 # index webpage displays cool visuals and receives user input text for model
 @app.route("/")
 @app.route("/index")
 def index():
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
-    genre_counts = df.genre.value_counts()
-    genre_names = list(genre_counts.index)
-    # create visuals
-    # TODO: Below is an example - modify to create your own visuals
-    graphs = [
-        {
-            "data": [Bar(x=genre_names, y=genre_counts)],
-            "layout": {
-                "title": "Distribution of Message Genres",
-                "yaxis": {"title": "Count"},
-                "xaxis": {"title": "Genre"},
-            },
-        }
-    ]
-
-    # encode plotly graphs in JSON
-    ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
-    graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
 
     # render web page with plotly graphs
-    return render_template("master.html", ids=ids, graphJSON=graphJSON)
+    ids, json_graph = get_graphs()
+    return render_template("master.html", ids=ids, graphJSON=json_graph)
 
 
 # web page that handles user query and displays model results
@@ -107,9 +166,52 @@ def go():
 
     # use model to predict classification for query
     classification_labels = model.predict([query])[0]
-    classification_results = dict(zip(df.columns[4:], classification_labels))
 
+    aid_links = "https://www.muenchen.de/int/en/tourism/important-information/emergency-help/most-important-emergency-numbers.html"
+    fire_link = "https://www.notruf112.bayern.de/notruf112/"
+    rescue_link = "https://www.seenotretter.de/en/who-we-are/"
+    military_link = "https://www.bundeswehr.de/de/aktuelles/schwerpunkte/search-and-rescue-sar-fliegende-lebensretter-rettungsdienst"
+    food_link = "https://www.bundesregierung.de/breg-en/news/germany-is-second-largest-donor-1547358"
+    money_link = "https://www.arbeitsagentur.de/en/financial-support"
+    refugee_link = "https://www.drk.de/en/aid-worldwide/what-we-do/refugee-relief/services-provided-for-refugees-by-the-grc/"
+    disaster_link = "https://www.auswaertiges-amt.de/en/aussenpolitik/themen/humanitaerehilfe/cyclone-idai/2201498"
+    links = {
+        "request": aid_links,
+        "offer": aid_links,
+        "aid_related": aid_links,
+        "medical_help": fire_link,
+        "medical_products": fire_link,
+        "search_and_rescue": rescue_link,
+        "security": aid_links,
+        "military": military_link,
+        "water": disaster_link,
+        "food": food_link,
+        "shelter": rescue_link,
+        "clothing": rescue_link,
+        "money": money_link,
+        "missing_people": rescue_link,
+        "refugees": refugee_link,
+        "death": aid_links,
+        "other_aid": aid_links,
+        "infrastructure_related": aid_links,
+        "transport": fire_link,
+        "buildings": fire_link,
+        "electricity": fire_link,
+        "tools": fire_link,
+        "hospitals": aid_links,
+        "shops": food_link,
+        "aid_centers": aid_links,
+        "other_infrastructure": disaster_link,
+        "weather_related": disaster_link,
+        "floods": disaster_link,
+        "storm": disaster_link,
+        "fire": fire_link,
+        "earthquake": fire_link,
+        "cold": disaster_link,
+        "other_weather": disaster_link,
+    }
     # This will render the go.html Please see that file.
+    classification_results = zip(df.columns[4:], classification_labels, links.values())
     return render_template(
         "go.html", query=query, classification_result=classification_results
     )

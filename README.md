@@ -10,12 +10,6 @@ The machine learning pipeline categorizes these events so that we can send the m
 
 The Project includes a web app where an emergency worker can input a new message and get classification results in several categories.
 
-
-Review Report
--------------
-####TODO:  
-- [ ] add link to webapp
-- [ ] write some instruction for using webapp 
  
 Content
 -------
@@ -80,7 +74,9 @@ Fill free to try them out and add your changes and ideas.
             * The model will be saved as compressed format `*.lzma`
         *  `python3 webapp/run.py`
             * The webapp runs with default values for model and database stored in `modesl` and `data` directories.
-            * It is possible to supply alternative `db_file` and `model_file` as arguments.  
+            * It is possible to supply alternative `db_file` and `model_file` as arguments.
+            * You can submit question to webapp and receive results.
+            * You can click on the valid results and directed to relevant organisations.  
     * all the input paths can be modified accordingly.
     
 More Information

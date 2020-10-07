@@ -1,26 +1,24 @@
 # import libraries
 import os
-import pandas as pd
 import argparse
-from sqlalchemy import create_engine
-import nltk
+import pandas as pd
 import numpy as np
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
+import re
+from sqlalchemy import create_engine
 
-from sklearn.svm import SVC
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, f1_score
 from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
-from sklearn.ensemble import RandomForestClassifier
-
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 import joblib
+import nltk
 
-nltk.download(["punkt", "wordnet", "averaged_perceptron_tagger"])
+nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
 
 
 def load_data(database_filepath):
@@ -44,14 +42,15 @@ def tokenize(text):
     :param text:
     :return:
     """
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+    tokens = nltk.tokenize.word_tokenize(text)
+    lemmatizer = nltk.stem.WordNetLemmatizer()
+    tokens = [nltk.stem.porter.PorterStemmer().stem(w) for w in tokens]
     clean_tokens = []
     for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
+        if tok.lower() not in nltk.corpus.stopwords.words("english"):
+            clean_tok = lemmatizer.lemmatize(tok, pos="v").lower().strip()
+            clean_tokens.append(clean_tok)
     return clean_tokens
 
 
