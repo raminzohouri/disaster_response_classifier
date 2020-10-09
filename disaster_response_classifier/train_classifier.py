@@ -4,8 +4,8 @@ import argparse
 import pandas as pd
 import numpy as np
 import re
+import pathlib
 from sqlalchemy import create_engine
-
 from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.ensemble import RandomForestClassifier
@@ -15,10 +15,23 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import AdaBoostClassifier
 import joblib
 import nltk
 
 nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
+
+
+def get_project_path():
+    """
+
+    :return:
+    """
+    if len(__file__.split("/")) > 1:
+        project_path = str(pathlib.Path(__file__).parent.parent.absolute())
+    else:
+        project_path = ".."
+    return project_path
 
 
 def load_data(database_filepath):
@@ -31,8 +44,8 @@ def load_data(database_filepath):
     table_name = "".join([database_filepath.split("/")[-1], "Table"])
     df = pd.read_sql_query("select * from DisasterResponseData", con=engine)
     X = df.iloc[:, 1]
-    Y = df.iloc[:, 4 : df.shape[1]]
-    category_names = df.columns[4 : df.shape[1]].to_list()
+    Y = df.iloc[:, 4: df.shape[1]]
+    category_names = df.columns[4: df.shape[1]].to_list()
     return X, Y, category_names
 
 
@@ -45,7 +58,6 @@ def tokenize(text):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
     tokens = nltk.tokenize.word_tokenize(text)
     lemmatizer = nltk.stem.WordNetLemmatizer()
-    tokens = [nltk.stem.porter.PorterStemmer().stem(w) for w in tokens]
     clean_tokens = []
     for tok in tokens:
         if tok.lower() not in nltk.corpus.stopwords.words("english"):
@@ -54,7 +66,7 @@ def tokenize(text):
     return clean_tokens
 
 
-def build_model():
+def build_model_simple():
     """
 
     :return:
@@ -69,6 +81,35 @@ def build_model():
     return pipeline
 
 
+def build_model():
+    '''
+    This function helps in building the model.
+    Creating the pipeline
+    Applying Grid search
+    Return the model
+    '''
+    # creating pipeline
+    pipeline = Pipeline([
+        ('vect', CountVectorizer(tokenizer=tokenize)),
+        ('tfidf', TfidfTransformer()),
+        ('clf', MultiOutputClassifier(AdaBoostClassifier()))
+    ])
+
+    # parameters
+    parameters = {
+        'vect__ngram_range': ((1, 1), (1, 2)),
+        'vect__max_df': (0.8, 1.0),
+        'vect__max_features': (None, 10000),
+        'clf__estimator__n_estimators': [50, 100],
+        'clf__estimator__learning_rate': [0.1, 1.0]
+    }
+
+    # grid search
+    cv = GridSearchCV(pipeline, parameters, cv=3, n_jobs=-1)
+
+    return cv
+
+
 def build_optimized_model():
     """
 
@@ -76,18 +117,21 @@ def build_optimized_model():
     """
     clf = MultiOutputClassifier(SVC())
     tune_parameters = {
-        "estimator__gamma": [1e-1, 1e-2, 1e-3, 1e-4],
-        "estimator__C": [1, 10, 100, 1000],
+        "clf_estimator__gamma": [1e-1, 1e-2, 1e-3],
+        "clf_estimator__C": [1, 10, 100],
+        'vect__ngram_range': ((1, 1), (1, 2)),
+        'vect__max_df': (0.8, 1.0),
+        'vect__max_features': (None, 10000),
     }
-    clf_grid = GridSearchCV(estimator=clf, n_jobs=7, cv=5, param_grid=tune_parameters)
     pipeline = Pipeline(
         [
             ("vect", CountVectorizer(tokenizer=tokenize)),
             ("tfidf", TfidfTransformer()),
-            ("clf", clf_grid),
+            ("clf", clf),
         ]
     )
-    return pipeline
+    clf_grid = GridSearchCV(estimator=pipeline, n_jobs=-1, cv=3, param_grid=tune_parameters)
+    return clf_grid
 
 
 def display_evaluation_results(y_test, y_pred, label_names):
@@ -167,6 +211,11 @@ def generate_arg_parser():
 
     :return:
     """
+    project_path = get_project_path()
+    # load data
+    default_db_path = "".join([project_path, "/data/DisasterResponseDataBase.db"])
+    default_model_path = "".join([str(project_path), "/models/"])
+
     parser = argparse.ArgumentParser(
         description="Load data from database and train classifier and dump the trained model."
     )
@@ -176,6 +225,7 @@ def generate_arg_parser():
         action="store",
         dest="db_file",
         type=str,
+        default=default_db_path,
         help="Path to disaster response database",
     )
 
@@ -184,6 +234,7 @@ def generate_arg_parser():
         action="store",
         dest="model_file",
         type=str,
+        default=default_model_path,
         help="path to store trained machine leaning model.",
     )
     return parser.parse_args(), parser
