@@ -44,8 +44,8 @@ def load_data(database_filepath):
     table_name = "".join([database_filepath.split("/")[-1], "Table"])
     df = pd.read_sql_query("select * from DisasterResponseData", con=engine)
     X = df.iloc[:, 1]
-    Y = df.iloc[:, 4: df.shape[1]]
-    category_names = df.columns[4: df.shape[1]].to_list()
+    Y = df.iloc[:, 4 : df.shape[1]]
+    category_names = df.columns[4 : df.shape[1]].to_list()
     return X, Y, category_names
 
 
@@ -82,26 +82,28 @@ def build_model_simple():
 
 
 def build_model():
-    '''
+    """
     This function helps in building the model.
     Creating the pipeline
     Applying Grid search
     Return the model
-    '''
+    """
     # creating pipeline
-    pipeline = Pipeline([
-        ('vect', CountVectorizer(tokenizer=tokenize)),
-        ('tfidf', TfidfTransformer()),
-        ('clf', MultiOutputClassifier(AdaBoostClassifier()))
-    ])
+    pipeline = Pipeline(
+        [
+            ("vect", CountVectorizer(tokenizer=tokenize)),
+            ("tfidf", TfidfTransformer()),
+            ("clf", MultiOutputClassifier(AdaBoostClassifier())),
+        ]
+    )
 
     # parameters
     parameters = {
-        'vect__ngram_range': ((1, 1), (1, 2)),
-        'vect__max_df': (0.8, 1.0),
-        'vect__max_features': (None, 10000),
-        'clf__estimator__n_estimators': [50, 100],
-        'clf__estimator__learning_rate': [0.1, 1.0]
+        "vect__ngram_range": ((1, 1), (1, 2)),
+        "vect__max_df": (0.8, 1.0),
+        "vect__max_features": (None, 10000),
+        "clf__estimator__n_estimators": [50, 100],
+        "clf__estimator__learning_rate": [0.1, 1.0],
     }
 
     # grid search
@@ -119,9 +121,9 @@ def build_optimized_model():
     tune_parameters = {
         "clf_estimator__gamma": [1e-1, 1e-2, 1e-3],
         "clf_estimator__C": [1, 10, 100],
-        'vect__ngram_range': ((1, 1), (1, 2)),
-        'vect__max_df': (0.8, 1.0),
-        'vect__max_features': (None, 10000),
+        "vect__ngram_range": ((1, 1), (1, 2)),
+        "vect__max_df": (0.8, 1.0),
+        "vect__max_features": (None, 10000),
     }
     pipeline = Pipeline(
         [
@@ -130,7 +132,9 @@ def build_optimized_model():
             ("clf", clf),
         ]
     )
-    clf_grid = GridSearchCV(estimator=pipeline, n_jobs=-1, cv=3, param_grid=tune_parameters)
+    clf_grid = GridSearchCV(
+        estimator=pipeline, n_jobs=-1, cv=3, param_grid=tune_parameters
+    )
     return clf_grid
 
 

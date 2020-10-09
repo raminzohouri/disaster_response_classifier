@@ -4,6 +4,7 @@ import pandas as pd
 import pathlib
 import argparse
 import random, threading, webbrowser
+
 # from ..disaster_response_classifier import utils
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -113,9 +114,9 @@ def get_graphs():
     # make adi related graph
     aid_counts = (
         df[df.message.str.lower().str.contains("help")]
-            .aid_related.value_counts()
-            .reset_index()
-            .aid_related
+        .aid_related.value_counts()
+        .reset_index()
+        .aid_related
     )
     aid_names = ["Not Aid Related", "Aid Related"]
     aid_graph = get_data_graph(
@@ -128,9 +129,9 @@ def get_graphs():
 
     medical_counts = (
         df[df.message.str.lower().str.contains("doctor")]
-            .medical_help.value_counts()
-            .reset_index()
-            .medical_help
+        .medical_help.value_counts()
+        .reset_index()
+        .medical_help
     )
     medical_names = ["Not Medical Help", "Medical Help"]
     medical_graph = get_data_graph(
