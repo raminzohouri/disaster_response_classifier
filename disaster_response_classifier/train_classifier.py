@@ -4,8 +4,8 @@ import argparse
 import pandas as pd
 import numpy as np
 import re
+import pathlib
 from sqlalchemy import create_engine
-
 from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.ensemble import RandomForestClassifier
@@ -15,15 +15,29 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import AdaBoostClassifier
 import joblib
 import nltk
 
-nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
+
+def get_project_path():
+    """
+    this function get project absolute path regardless of we the python script being executed.
+    relative path for loading data or model can be define give project absolute path
+    return  project absolute path
+    :return:
+    """
+    if len(__file__.split("/")) > 1:
+        project_path = str(pathlib.Path(__file__).parent.parent.absolute())
+    else:
+        project_path = ".."
+    return project_path
 
 
 def load_data(database_filepath):
     """
-
+    load stored preprocessed data from sqlite database given path to be use for generating plots and analysis.
+    returns train data, train labels, list of class/category names
     :param database_filepath:
     :return:
     """
@@ -38,14 +52,15 @@ def load_data(database_filepath):
 
 def tokenize(text):
     """
-
+    receives a text message and breaks it down to relevant tokens using NLP techniques
+    the resulting word array will be used for feature extraction in classification pipeline
+    return array of tokens
     :param text:
     :return:
     """
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
     tokens = nltk.tokenize.word_tokenize(text)
     lemmatizer = nltk.stem.WordNetLemmatizer()
-    tokens = [nltk.stem.porter.PorterStemmer().stem(w) for w in tokens]
     clean_tokens = []
     for tok in tokens:
         if tok.lower() not in nltk.corpus.stopwords.words("english"):
@@ -54,9 +69,12 @@ def tokenize(text):
     return clean_tokens
 
 
-def build_model():
+def build_model_simple():
     """
+    This function helps in building the model.
+    Creating the pipeline
 
+    Return the model
     :return:
     """
     pipeline = Pipeline(
@@ -69,30 +87,69 @@ def build_model():
     return pipeline
 
 
-def build_optimized_model():
+def build_model():
     """
-
-    :return:
+    This function helps in building the model.
+    Creating the pipeline
+    Applying Grid search
+    Return the model
     """
-    clf = MultiOutputClassifier(SVC())
-    tune_parameters = {
-        "estimator__gamma": [1e-1, 1e-2, 1e-3, 1e-4],
-        "estimator__C": [1, 10, 100, 1000],
-    }
-    clf_grid = GridSearchCV(estimator=clf, n_jobs=7, cv=5, param_grid=tune_parameters)
+    # creating pipeline
     pipeline = Pipeline(
         [
             ("vect", CountVectorizer(tokenizer=tokenize)),
             ("tfidf", TfidfTransformer()),
-            ("clf", clf_grid),
+            ("clf", MultiOutputClassifier(AdaBoostClassifier())),
         ]
     )
-    return pipeline
+
+    # parameters
+    parameters = {
+        "vect__ngram_range": ((1, 1), (1, 2)),
+        "vect__max_df": (0.8, 1.0),
+        "vect__max_features": (None, 10000),
+        "clf__estimator__n_estimators": [50, 100],
+        "clf__estimator__learning_rate": [0.1, 1.0],
+    }
+
+    # grid search
+    cv = GridSearchCV(pipeline, parameters, cv=3, n_jobs=-1)
+
+    return cv
+
+
+def build_optimized_model():
+    """
+     This function helps in building the model.
+    Creating the pipeline
+    Applying Grid search
+    Return the model
+    :return:
+    """
+    clf = MultiOutputClassifier(SVC())
+    tune_parameters = {
+        "clf_estimator__gamma": [1e-1, 1e-2, 1e-3],
+        "clf_estimator__C": [1, 10, 100],
+        "vect__ngram_range": ((1, 1), (1, 2)),
+        "vect__max_df": (0.8, 1.0),
+        "vect__max_features": (None, 10000),
+    }
+    pipeline = Pipeline(
+        [
+            ("vect", CountVectorizer(tokenizer=tokenize)),
+            ("tfidf", TfidfTransformer()),
+            ("clf", clf),
+        ]
+    )
+    clf_grid = GridSearchCV(
+        estimator=pipeline, n_jobs=-1, cv=3, param_grid=tune_parameters
+    )
+    return clf_grid
 
 
 def display_evaluation_results(y_test, y_pred, label_names):
     """
-
+    applies classification metrics on predicted classes and prints out f1 score, accuracy and confusion matrix per class
     :param y_test:
     :param y_pred:
     :param label_names
@@ -136,7 +193,7 @@ def display_evaluation_results(y_test, y_pred, label_names):
 
 def evaluate_model(model, X_test, Y_test, category_names):
     """
-
+    runs evaluation on test data and displays the results
     :param model:
     :param X_test:
     :param Y_test:
@@ -149,7 +206,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 def save_model(model, model_filepath, model_name="dr_trained_model.lzma"):
     """
-
+    saves trained model in given path
     :param model:
     :param model_filepath:
     :param model_name:
@@ -164,9 +221,15 @@ def save_model(model, model_filepath, model_name="dr_trained_model.lzma"):
 
 def generate_arg_parser():
     """
+    this function receives input arguments for various functions.
 
     :return:
     """
+    project_path = get_project_path()
+    # load data
+    default_db_path = "".join([project_path, "/data/DisasterResponseDataBase.db"])
+    default_model_path = "".join([str(project_path), "/models/"])
+
     parser = argparse.ArgumentParser(
         description="Load data from database and train classifier and dump the trained model."
     )
@@ -176,6 +239,7 @@ def generate_arg_parser():
         action="store",
         dest="db_file",
         type=str,
+        default=default_db_path,
         help="Path to disaster response database",
     )
 
@@ -184,6 +248,7 @@ def generate_arg_parser():
         action="store",
         dest="model_file",
         type=str,
+        default=default_model_path,
         help="path to store trained machine leaning model.",
     )
     return parser.parse_args(), parser
@@ -194,7 +259,8 @@ def main():
     if not args_params.db_file or not args_params.model_file:
         parser.print_help()
         exit(1)
-
+    print("\n Downloading required NLTK libraries....\n")
+    nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
     print("Loading data...\n    DATABASE: {}".format(args_params.db_file))
     X, Y, category_names = load_data(args_params.db_file)
 

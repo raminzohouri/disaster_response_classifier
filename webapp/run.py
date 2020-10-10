@@ -3,16 +3,16 @@ import plotly
 import pandas as pd
 import pathlib
 import argparse
-
-# from ..disaster_response_classifier import utils
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-
+import random
+import threading
+import webbrowser
+import nltk
 from flask import Flask
 from flask import render_template, request, jsonify
 from plotly.graph_objs import Bar
 import joblib
 from sqlalchemy import create_engine
+import re
 
 app = Flask(__name__)
 df = None
@@ -21,24 +21,28 @@ model = None
 
 def tokenize(text):
     """
-
+    receives a text message and breaks it down to relevant tokens using NLP techniques
+    the resulting word array will be used for feature extraction in classification pipeline
+    return array of tokens
     :param text:
     :return:
     """
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
-
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+    tokens = nltk.tokenize.word_tokenize(text)
+    lemmatizer = nltk.stem.WordNetLemmatizer()
     clean_tokens = []
     for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
+        if tok.lower() not in nltk.corpus.stopwords.words("english"):
+            clean_tok = lemmatizer.lemmatize(tok, pos="v").lower().strip()
+            clean_tokens.append(clean_tok)
     return clean_tokens
 
 
 def get_project_path():
     """
-
+    this function get project absolute path regardless of we the python script being executed.
+    relative path for loading data or model can be define given project absolute path
+    return  project absolute path
     :return:
     """
     if len(__file__.split("/")) > 1:
@@ -50,9 +54,10 @@ def get_project_path():
 
 def load_dataframe(db_file):
     """
-
+    load stored preprocessed data from sqlite database given path to be use for generating plots and analysis.
+    returns dataframe
     :param db_file:
-    :return:
+    :return: df
     """
     engine = create_engine("".join(["sqlite:///", db_file]))
     df = pd.read_sql_table("DisasterResponseData", engine)
@@ -61,7 +66,7 @@ def load_dataframe(db_file):
 
 def load_model(model_file):
     """
-
+    load machine learning model doing text classification
     :param model_file:
     :return:
     """
@@ -72,7 +77,8 @@ def load_model(model_file):
 
 def get_data_graph(df_counts, df_names, title, y_title, x_title):
     """
-
+    this function put results of query in json format, to be used in plotting
+    return plot data/graph in json document format
     :param df_counts:
     :param df_names:
     :param title:
@@ -97,7 +103,8 @@ def get_data_graph(df_counts, df_names, title, y_title, x_title):
 
 def get_graphs():
     """
-
+    this function generate json graphs for different queries which will be used in plot in first page of the website.
+    return ids and json graph to be plot in the browser
     :return:
     """
     # make genre graph
@@ -147,20 +154,31 @@ def get_graphs():
     return ids, json_graph
 
 
-# index webpage displays cool visuals and receives user input text for model
 @app.route("/")
 @app.route("/index")
 def index():
+    """
     # extract data needed for visuals
 
     # render web page with plotly graphs
+
+    # index webpage displays cool visuals and receives user input text for model
+
+    :return:
+    """
+
     ids, json_graph = get_graphs()
     return render_template("master.html", ids=ids, graphJSON=json_graph)
 
 
-# web page that handles user query and displays model results
 @app.route("/go")
 def go():
+    """
+    web page that handles user query and displays model results
+    this receives the input text, does the classification and maps the results to relevant websites.
+
+    :return:
+    """
     # save user input in query
     query = request.args.get("query", "")
 
@@ -219,7 +237,7 @@ def go():
 
 def generate_arg_parser():
     """
-
+    this function receives input arguments for various functions.
     :return:
     """
     project_path = get_project_path()
@@ -254,9 +272,14 @@ def generate_arg_parser():
 def main():
     args_params, parser = generate_arg_parser()
     global df, model
+    print("\n Downloading required NLTK libraries....\n")
+    nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
     df = load_dataframe(args_params.db_file)
     model = load_model(args_params.model_file)
-    app.run(host="0.0.0.0", port=3001, debug=True)
+    port = 5000 + random.randint(0, 999)
+    url = "http://127.0.0.1:{0}".format(port)
+    threading.Timer(0.75, lambda: webbrowser.open(url)).start()
+    app.run(port=port, debug=False)
 
 
 if __name__ == "__main__":

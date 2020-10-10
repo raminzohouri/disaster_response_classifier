@@ -3,11 +3,27 @@ import pandas as pd
 from sqlalchemy import create_engine
 import os
 import argparse
+import pathlib
+
+
+def get_project_path():
+    """
+    this function get project absolute path regardless of we the python script being executed.
+    relative path for loading data or model can be define give project absolute path
+    return  project absolute path
+    :return:
+    """
+    if len(__file__.split("/")) > 1:
+        project_path = str(pathlib.Path(__file__).parent.parent.absolute())
+    else:
+        project_path = ".."
+    return project_path
 
 
 def load_data(messages_filepath, categories_filepath):
     """
-
+    load message and category from given csv files
+    returns concatenated  dataframe
     :param messages_filepath:
     :param categories_filepath:
     :return:
@@ -23,37 +39,38 @@ def load_data(messages_filepath, categories_filepath):
 
 def clean_data(df):
     """
-
+    Split categories into separate category columns.
+    select the first row of the categories dataframe
+    use this row to extract a list of new column names for categories.
+    one way is to apply a lambda function that takes everything
+    up to the second to last character of each string with slicing
+    rename the columns of `categories`
+    set each value to be the last character of the string
+    convert column from string to numeric
+    drop duplicates
+    drop nan
+    returns clean dataframe
     :param df:
     :return:
     """
-    # Split categories into separate category columns.
+
     df = pd.concat([df, df.categories.str.split(";", expand=True)], axis=1).drop(
         columns=["categories"]
     )
 
-    # select the first row of the categories dataframe
-    # use this row to extract a list of new column names for categories.
-    # one way is to apply a lambda function that takes everything
-    # up to the second to last character of each string with slicing
     category_colnames = df.iloc[0, 4 : df.shape[1]].apply(lambda x: x[0:-2])
 
-    # rename the columns of `categories`
     df.rename(
         columns=dict(zip(df.columns[4 : df.shape[1]], pd.Index(category_colnames))),
         inplace=True,
     )
 
-    # set each value to be the last character of the string
-    # convert column from string to numeric
     df[df.columns[4 : df.shape[1]]] = (
         df[df.columns[4 : df.shape[1]]]
         .applymap(lambda x: x[-1] if x[-1] in ["0", "1"] else "1")
         .astype(int)
     )
 
-    # drop duplicates
-    # drop nan
     df.dropna(subset=["message"], inplace=True)
     df.drop_duplicates(subset="message", inplace=True)
     return df
@@ -61,7 +78,7 @@ def clean_data(df):
 
 def save_data(df, database_filepath):
     """
-
+    saves given dataframe in given path as sqlite database
     :param df:
     :param database_filepath:
     :return:
@@ -78,9 +95,20 @@ def save_data(df, database_filepath):
 
 def generate_arg_parser():
     """
+    this function receives input arguments for various functions.
 
     :return:
     """
+    project_path = get_project_path()
+    # load data
+    default_db_path = "".join([project_path, "/data/"])
+    default_cat_file = "".join(
+        [str(project_path), "/data/disaster-response-categories.csv"]
+    )
+    default_msg_file = "".join(
+        [str(project_path), "/data/disaster-response-messages.csv"]
+    )
+
     parser = argparse.ArgumentParser(
         description="Process row data and store in database."
     )
@@ -89,6 +117,7 @@ def generate_arg_parser():
         "--msg_file",
         action="store",
         dest="msg_file",
+        default=default_msg_file,
         type=argparse.FileType("r"),
         help="path to disaster response messages file.",
     )
@@ -97,6 +126,7 @@ def generate_arg_parser():
         "--cat_file",
         action="store",
         dest="cat_file",
+        default=default_cat_file,
         type=argparse.FileType("r"),
         help="path to disaster response messages categories file.",
     )
@@ -106,6 +136,7 @@ def generate_arg_parser():
         action="store",
         dest="db_file",
         type=str,
+        default=default_db_path,
         help="path to SQLLite database file for storing processed data.",
     )
     return parser.parse_args()
