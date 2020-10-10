@@ -19,12 +19,12 @@ from sklearn.ensemble import AdaBoostClassifier
 import joblib
 import nltk
 
-nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
-
 
 def get_project_path():
     """
-
+    this function get project absolute path regardless of we the python script being executed.
+    relative path for loading data or model can be define give project absolute path
+    return  project absolute path
     :return:
     """
     if len(__file__.split("/")) > 1:
@@ -36,7 +36,8 @@ def get_project_path():
 
 def load_data(database_filepath):
     """
-
+    load stored preprocessed data from sqlite database given path to be use for generating plots and analysis.
+    returns train data, train labels, list of class/category names
     :param database_filepath:
     :return:
     """
@@ -51,7 +52,9 @@ def load_data(database_filepath):
 
 def tokenize(text):
     """
-
+    receives a text message and breaks it down to relevant tokens using NLP techniques
+    the resulting word array will be used for feature extraction in classification pipeline
+    return array of tokens
     :param text:
     :return:
     """
@@ -68,7 +71,10 @@ def tokenize(text):
 
 def build_model_simple():
     """
+    This function helps in building the model.
+    Creating the pipeline
 
+    Return the model
     :return:
     """
     pipeline = Pipeline(
@@ -114,7 +120,10 @@ def build_model():
 
 def build_optimized_model():
     """
-
+     This function helps in building the model.
+    Creating the pipeline
+    Applying Grid search
+    Return the model
     :return:
     """
     clf = MultiOutputClassifier(SVC())
@@ -140,7 +149,7 @@ def build_optimized_model():
 
 def display_evaluation_results(y_test, y_pred, label_names):
     """
-
+    applies classification metrics on predicted classes and prints out f1 score, accuracy and confusion matrix per class
     :param y_test:
     :param y_pred:
     :param label_names
@@ -184,7 +193,7 @@ def display_evaluation_results(y_test, y_pred, label_names):
 
 def evaluate_model(model, X_test, Y_test, category_names):
     """
-
+    runs evaluation on test data and displays the results
     :param model:
     :param X_test:
     :param Y_test:
@@ -197,7 +206,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 def save_model(model, model_filepath, model_name="dr_trained_model.lzma"):
     """
-
+    saves trained model in given path
     :param model:
     :param model_filepath:
     :param model_name:
@@ -212,6 +221,7 @@ def save_model(model, model_filepath, model_name="dr_trained_model.lzma"):
 
 def generate_arg_parser():
     """
+    this function receives input arguments for various functions.
 
     :return:
     """
@@ -249,7 +259,8 @@ def main():
     if not args_params.db_file or not args_params.model_file:
         parser.print_help()
         exit(1)
-
+    print("\n Downloading required NLTK libraries....\n")
+    nltk.download(["punkt", "wordnet", "stopwords", "averaged_perceptron_tagger"])
     print("Loading data...\n    DATABASE: {}".format(args_params.db_file))
     X, Y, category_names = load_data(args_params.db_file)
 
