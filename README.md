@@ -103,7 +103,7 @@ Feel free to fork this repository and or make pull requerst to in order to add n
 License
 -------
 
-content of this respository is Copyright © 2020-2020 Ramin Zohouri. It is free
+content of this repository is Copyright © 2020-2020 Ramin Zohouri. It is free
 software, and may be redistributed under the terms specified in the
 [LICENSE] file.
 
