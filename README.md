@@ -98,12 +98,12 @@ Useful Links
 
 Contributing
 ------------
-
+Feel free to fork this repository and or make pull requerst to in order to add new features.
 
 License
 -------
 
-content of this survey is Copyright © 2008-2020 Joe Ferris and thoughtbot. It is free
+content of this respository is Copyright © 2020-2020 Ramin Zohouri. It is free
 software, and may be redistributed under the terms specified in the
 [LICENSE] file.
 
